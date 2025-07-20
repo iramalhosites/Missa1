@@ -21,7 +21,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
@@ -51,6 +51,11 @@
             color: #e6e600;
             text-shadow: 0 0 10px rgba(230, 230, 0, 0.5);
             text-align: center;
+        }
+
+        .section-title.realizado {
+            color: #4CAF50;
+            text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
         }
 
         .form-group {
@@ -132,6 +137,15 @@
             box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
         }
 
+        .btn-success {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+
         .cantico-item {
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -158,6 +172,19 @@
             transform: rotate(5deg);
         }
 
+        .cantico-item.realizado {
+            background: rgba(76, 175, 80, 0.15);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .cantico-item.realizado:hover {
+            background: rgba(76, 175, 80, 0.25);
+        }
+
+        .cantico-item.clickable {
+            cursor: pointer;
+        }
+
         .cantico-info {
             flex: 1;
         }
@@ -172,6 +199,10 @@
         .cantico-detalhes {
             font-size: 0.9rem;
             color: #e6e600;
+        }
+
+        .cantico-item.realizado .cantico-detalhes {
+            color: #4CAF50;
         }
 
         .cantico-actions {
@@ -312,6 +343,26 @@
             margin-bottom: 5px;
         }
 
+        .quadros-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .quadro-realizado {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.2);
+        }
+
+        .move-instruction {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            font-style: italic;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -349,6 +400,11 @@
                 width: 95%;
                 margin: 5% auto;
                 padding: 20px;
+            }
+
+            .quadros-container {
+                grid-template-columns: 1fr;
+                gap: 15px;
             }
         }
 
@@ -446,12 +502,27 @@
             </div>
         </div>
 
-        <!-- Seção de cânticos selecionados -->
-        <div class="glass-panel">
-            <h2 class="section-title">Cânticos Selecionados</h2>
-            <div id="canticosSelecionados">
-                <div class="empty-state">
-                    Nenhum cântico adicionado ainda. Use o formulário acima para adicionar cânticos.
+        <!-- Quadros de cânticos -->
+        <div class="quadros-container">
+            <!-- Seção de cânticos selecionados -->
+            <div class="glass-panel">
+                <h2 class="section-title">Cânticos Selecionados</h2>
+                <div class="move-instruction">Clique em um cântico para movê-lo para "Realizado" ou arraste para reordenar</div>
+                <div id="canticosSelecionados">
+                    <div class="empty-state">
+                        Nenhum cântico adicionado ainda. Use o formulário acima para adicionar cânticos.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção de cânticos realizados -->
+            <div class="glass-panel quadro-realizado">
+                <h2 class="section-title realizado">Realizado ✓</h2>
+                <div class="move-instruction">Clique em um cântico para voltar para "Selecionados"</div>
+                <div id="canticosRealizados">
+                    <div class="empty-state">
+                        Nenhum cântico realizado ainda.
+                    </div>
                 </div>
             </div>
         </div>
@@ -506,6 +577,7 @@
 
     <script>
         let canticos = [];
+        let canticosRealizados = [];
         let draggedElement = null;
         let autoSaveInterval;
         let relacaoAtual = {
@@ -513,6 +585,7 @@
             nome: 'Nova Relação',
             descricao: '',
             canticos: [],
+            canticosRealizados: [],
             dataCriacao: null,
             dataModificacao: null
         };
@@ -557,16 +630,23 @@
 
             canticos.push(cantico);
             relacaoAtual.canticos = canticos;
+            relacaoAtual.canticosRealizados = canticosRealizados;
             relacaoAtual.dataModificacao = new Date().toISOString();
             
             document.getElementById('nomeCantico').value = '';
-            atualizarLista();
+            atualizarListas();
             atualizarInfoRelacaoAtual();
             salvarAutoSave();
         }
 
-        // Função para atualizar a lista de cânticos
-        function atualizarLista() {
+        // Função para atualizar as listas de cânticos
+        function atualizarListas() {
+            atualizarListaSelecionados();
+            atualizarListaRealizados();
+        }
+
+        // Função para atualizar a lista de cânticos selecionados
+        function atualizarListaSelecionados() {
             const container = document.getElementById('canticosSelecionados');
             
             if (canticos.length === 0) {
@@ -575,26 +655,82 @@
             }
 
             container.innerHTML = canticos.map((cantico, index) => `
-                <div class="cantico-item" draggable="true" data-id="${cantico.id}" data-index="${index}">
-                    <div class="drag-handle">⋮⋮</div>
+                <div class="cantico-item clickable" draggable="true" data-id="${cantico.id}" data-index="${index}" onclick="moverParaRealizado(${cantico.id})">
+                    <div class="drag-handle" onclick="event.stopPropagation()">⋮⋮</div>
                     <div class="cantico-info">
                         <div class="cantico-nome">${cantico.nome}</div>
                         <div class="cantico-detalhes">${cantico.tipo} - ${cantico.tom}</div>
                     </div>
-                    <div class="cantico-actions">
+                    <div class="cantico-actions" onclick="event.stopPropagation()">
                         <button class="btn btn-small btn-secondary" onclick="editarCantico(${cantico.id})">✏️</button>
                         <button class="btn btn-small btn-danger" onclick="excluirCantico(${cantico.id})">🗑️</button>
                     </div>
                 </div>
             `).join('');
 
-            // Adicionar eventos de drag and drop
-            adicionarEventosDragDrop();
+            // Adicionar eventos de drag and drop apenas para cânticos selecionados
+            adicionarEventosDragDropSelecionados();
         }
 
-        // Função para adicionar eventos de drag and drop
-        function adicionarEventosDragDrop() {
-            const items = document.querySelectorAll('.cantico-item');
+        // Função para atualizar a lista de cânticos realizados
+        function atualizarListaRealizados() {
+            const container = document.getElementById('canticosRealizados');
+            
+            if (canticosRealizados.length === 0) {
+                container.innerHTML = '<div class="empty-state">Nenhum cântico realizado ainda.</div>';
+                return;
+            }
+
+            container.innerHTML = canticosRealizados.map((cantico, index) => `
+                <div class="cantico-item realizado clickable" data-id="${cantico.id}" data-index="${index}" onclick="voltarParaSelecionados(${cantico.id})">
+                    <div class="cantico-info">
+                        <div class="cantico-nome">${cantico.nome}</div>
+                        <div class="cantico-detalhes">${cantico.tipo} - ${cantico.tom}</div>
+                    </div>
+                    <div class="cantico-actions" onclick="event.stopPropagation()">
+                        <button class="btn btn-small btn-success" onclick="voltarParaSelecionados(${cantico.id})">↩️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Função para mover cântico para realizado
+        function moverParaRealizado(id) {
+            const canticoIndex = canticos.findIndex(c => c.id === id);
+            if (canticoIndex === -1) return;
+
+            const cantico = canticos.splice(canticoIndex, 1)[0];
+            canticosRealizados.push(cantico);
+
+            relacaoAtual.canticos = canticos;
+            relacaoAtual.canticosRealizados = canticosRealizados;
+            relacaoAtual.dataModificacao = new Date().toISOString();
+
+            atualizarListas();
+            atualizarInfoRelacaoAtual();
+            salvarAutoSave();
+        }
+
+        // Função para voltar cântico para selecionados
+        function voltarParaSelecionados(id) {
+            const canticoIndex = canticosRealizados.findIndex(c => c.id === id);
+            if (canticoIndex === -1) return;
+
+            const cantico = canticosRealizados.splice(canticoIndex, 1)[0];
+            canticos.push(cantico);
+
+            relacaoAtual.canticos = canticos;
+            relacaoAtual.canticosRealizados = canticosRealizados;
+            relacaoAtual.dataModificacao = new Date().toISOString();
+
+            atualizarListas();
+            atualizarInfoRelacaoAtual();
+            salvarAutoSave();
+        }
+
+        // Função para adicionar eventos de drag and drop apenas nos selecionados
+        function adicionarEventosDragDropSelecionados() {
+            const items = document.querySelectorAll('#canticosSelecionados .cantico-item');
             
             items.forEach(item => {
                 item.addEventListener('dragstart', handleDragStart);
@@ -609,6 +745,7 @@
             draggedElement = this;
             this.classList.add('dragging');
             e.dataTransfer.effectAllowed = 'move';
+            e.stopPropagation();
         }
 
         function handleDragOver(e) {
@@ -619,7 +756,7 @@
         function handleDrop(e) {
             e.preventDefault();
             
-            if (this !== draggedElement) {
+            if (this !== draggedElement && this.closest('#canticosSelecionados')) {
                 const draggedIndex = parseInt(draggedElement.dataset.index);
                 const targetIndex = parseInt(this.dataset.index);
                 
@@ -628,9 +765,10 @@
                 canticos.splice(targetIndex, 0, draggedItem);
                 
                 relacaoAtual.canticos = canticos;
+                relacaoAtual.canticosRealizados = canticosRealizados;
                 relacaoAtual.dataModificacao = new Date().toISOString();
                 
-                atualizarLista();
+                atualizarListas();
                 atualizarInfoRelacaoAtual();
                 salvarAutoSave();
             }
@@ -643,7 +781,7 @@
 
         // Função para editar cântico
         function editarCantico(id) {
-            const cantico = canticos.find(c => c.id === id);
+            const cantico = canticos.find(c => c.id === id) || canticosRealizados.find(c => c.id === id);
             if (!cantico) return;
 
             const novoNome = prompt('Novo nome do cântico:', cantico.nome);
@@ -660,9 +798,10 @@
             cantico.tom = novoTom.trim() || cantico.tom;
 
             relacaoAtual.canticos = canticos;
+            relacaoAtual.canticosRealizados = canticosRealizados;
             relacaoAtual.dataModificacao = new Date().toISOString();
 
-            atualizarLista();
+            atualizarListas();
             atualizarInfoRelacaoAtual();
             salvarAutoSave();
         }
@@ -671,10 +810,13 @@
         function excluirCantico(id) {
             if (confirm('Tem certeza que deseja excluir este cântico?')) {
                 canticos = canticos.filter(c => c.id !== id);
+                canticosRealizados = canticosRealizados.filter(c => c.id !== id);
+                
                 relacaoAtual.canticos = canticos;
+                relacaoAtual.canticosRealizados = canticosRealizados;
                 relacaoAtual.dataModificacao = new Date().toISOString();
                 
-                atualizarLista();
+                atualizarListas();
                 atualizarInfoRelacaoAtual();
                 salvarAutoSave();
             }
@@ -682,31 +824,35 @@
 
         // Função para nova relação
         function novaRelacao() {
-            if (canticos.length > 0 && confirm('Tem certeza que deseja criar uma nova relação? Os cânticos atuais serão perdidos se não foram salvos.')) {
+            const totalCanticos = canticos.length + canticosRealizados.length;
+            if (totalCanticos > 0 && confirm('Tem certeza que deseja criar uma nova relação? Os cânticos atuais serão perdidos se não foram salvos.')) {
                 criarNovaRelacao();
-            } else if (canticos.length === 0) {
+            } else if (totalCanticos === 0) {
                 criarNovaRelacao();
             }
         }
 
         function criarNovaRelacao() {
             canticos = [];
+            canticosRealizados = [];
             relacaoAtual = {
                 id: null,
                 nome: 'Nova Relação',
                 descricao: '',
                 canticos: [],
+                canticosRealizados: [],
                 dataCriacao: null,
                 dataModificacao: null
             };
-            atualizarLista();
+            atualizarListas();
             atualizarInfoRelacaoAtual();
             salvarAutoSave();
         }
 
         // Função para salvar relação
         function salvarRelacao() {
-            if (canticos.length === 0) {
+            const totalCanticos = canticos.length + canticosRealizados.length;
+            if (totalCanticos === 0) {
                 alert('Não há cânticos para salvar.');
                 return;
             }
@@ -735,6 +881,7 @@
             relacaoAtual.nome = nome;
             relacaoAtual.descricao = descricao;
             relacaoAtual.canticos = canticos;
+            relacaoAtual.canticosRealizados = canticosRealizados;
             relacaoAtual.dataModificacao = agora;
 
             // Salvar no banco de dados local
@@ -775,14 +922,16 @@
 
             container.innerHTML = relacoesSalvas.map(relacao => {
                 const dataModificacao = new Date(relacao.dataModificacao || relacao.dataCriacao).toLocaleString('pt-BR');
-                const quantidadeCanticos = relacao.canticos ? relacao.canticos.length : 0;
+                const quantidadeCanticos = (relacao.canticos ? relacao.canticos.length : 0) + (relacao.canticosRealizados ? relacao.canticosRealizados.length : 0);
+                const quantidadeRealizados = relacao.canticosRealizados ? relacao.canticosRealizados.length : 0;
                 
                 return `
                     <div class="relacao-item">
                         <div class="relacao-info">
                             <div class="relacao-nome">${relacao.nome}</div>
                             <div class="relacao-detalhes">
-                                ${quantidadeCanticos} cântico${quantidadeCanticos !== 1 ? 's' : ''} • 
+                                ${quantidadeCanticos} cântico${quantidadeCanticos !== 1 ? 's' : ''} 
+                                ${quantidadeRealizados > 0 ? `(${quantidadeRealizados} realizado${quantidadeRealizados !== 1 ? 's' : ''})` : ''} • 
                                 ${dataModificacao}
                                 ${relacao.descricao ? '<br>' + relacao.descricao : ''}
                             </div>
@@ -806,14 +955,16 @@
                 return;
             }
 
-            if (canticos.length > 0 && !confirm('Tem certeza que deseja carregar esta relação? Os cânticos atuais serão perdidos se não foram salvos.')) {
+            const totalCanticos = canticos.length + canticosRealizados.length;
+            if (totalCanticos > 0 && !confirm('Tem certeza que deseja carregar esta relação? Os cânticos atuais serão perdidos se não foram salvos.')) {
                 return;
             }
 
             relacaoAtual = { ...relacao };
             canticos = relacao.canticos || [];
+            canticosRealizados = relacao.canticosRealizados || [];
             
-            atualizarLista();
+            atualizarListas();
             atualizarInfoRelacaoAtual();
             salvarAutoSave();
             fecharModal();
@@ -861,14 +1012,15 @@
 
         // Função para exportar relação
         function exportarRelacao() {
-            if (canticos.length === 0) {
+            const totalCanticos = canticos.length + canticosRealizados.length;
+            if (totalCanticos === 0) {
                 alert('Não há cânticos para exportar.');
                 return;
             }
 
             const configuracao = {
                 relacao: relacaoAtual,
-                versao: '2.0',
+                versao: '2.1',
                 exportadoEm: new Date().toISOString()
             };
 
@@ -898,10 +1050,11 @@
                 try {
                     const dados = JSON.parse(e.target.result);
                     
-                    // Verificar se é o formato novo (v2.0) ou antigo (v1.0)
-                    if (dados.relacao && dados.versao === '2.0') {
+                    // Verificar se é o formato novo (v2.1, v2.0) ou antigo (v1.0)
+                    if (dados.relacao && (dados.versao === '2.1' || dados.versao === '2.0')) {
                         // Formato novo
-                        if (canticos.length > 0 && !confirm('Tem certeza que deseja importar esta relação? Os cânticos atuais serão perdidos se não foram salvos.')) {
+                        const totalCanticos = canticos.length + canticosRealizados.length;
+                        if (totalCanticos > 0 && !confirm('Tem certeza que deseja importar esta relação? Os cânticos atuais serão perdidos se não foram salvos.')) {
                             return;
                         }
                         
@@ -912,19 +1065,23 @@
                             dataModificacao: new Date().toISOString()
                         };
                         canticos = dados.relacao.canticos || [];
+                        canticosRealizados = dados.relacao.canticosRealizados || [];
                         
                     } else if (dados.canticos && Array.isArray(dados.canticos)) {
                         // Formato antigo (v1.0)
-                        if (canticos.length > 0 && !confirm('Tem certeza que deseja importar esta configuração? Os cânticos atuais serão perdidos se não foram salvos.')) {
+                        const totalCanticos = canticos.length + canticosRealizados.length;
+                        if (totalCanticos > 0 && !confirm('Tem certeza que deseja importar esta configuração? Os cânticos atuais serão perdidos se não foram salvos.')) {
                             return;
                         }
                         
                         canticos = dados.canticos;
+                        canticosRealizados = [];
                         relacaoAtual = {
                             id: null,
                             nome: 'Relação Importada',
                             descricao: 'Importada de arquivo antigo',
                             canticos: canticos,
+                            canticosRealizados: canticosRealizados,
                             dataCriacao: null,
                             dataModificacao: new Date().toISOString()
                         };
@@ -933,7 +1090,7 @@
                         return;
                     }
                     
-                    atualizarLista();
+                    atualizarListas();
                     atualizarInfoRelacaoAtual();
                     salvarAutoSave();
                     alert('Arquivo importado com sucesso!');
@@ -956,11 +1113,21 @@
             nomeElement.textContent = relacaoAtual.nome;
             
             let detalhes = '';
+            const totalCanticos = canticos.length + canticosRealizados.length;
+            const quantidadeRealizados = canticosRealizados.length;
+            
             if (relacaoAtual.id) {
                 const dataModificacao = new Date(relacaoAtual.dataModificacao || relacaoAtual.dataCriacao).toLocaleString('pt-BR');
-                detalhes = `Salva • ${canticos.length} cântico${canticos.length !== 1 ? 's' : ''} • ${dataModificacao}`;
+                detalhes = `Salva • ${totalCanticos} cântico${totalCanticos !== 1 ? 's' : ''}`;
+                if (quantidadeRealizados > 0) {
+                    detalhes += ` (${quantidadeRealizados} realizado${quantidadeRealizados !== 1 ? 's' : ''})`;
+                }
+                detalhes += ` • ${dataModificacao}`;
             } else {
-                detalhes = `Não salva • ${canticos.length} cântico${canticos.length !== 1 ? 's' : ''}`;
+                detalhes = `Não salva • ${totalCanticos} cântico${totalCanticos !== 1 ? 's' : ''}`;
+                if (quantidadeRealizados > 0) {
+                    detalhes += ` (${quantidadeRealizados} realizado${quantidadeRealizados !== 1 ? 's' : ''})`;
+                }
             }
             
             detalhesElement.textContent = detalhes;
@@ -993,6 +1160,7 @@
             const autoSave = {
                 relacaoAtual: relacaoAtual,
                 canticos: canticos,
+                canticosRealizados: canticosRealizados,
                 timestamp: Date.now()
             };
             localStorage.setItem('ordem_missa_autosave', JSON.stringify(autoSave));
@@ -1007,7 +1175,8 @@
                     if (data.relacaoAtual) {
                         relacaoAtual = data.relacaoAtual;
                         canticos = data.canticos || [];
-                        atualizarLista();
+                        canticosRealizados = data.canticosRealizados || [];
+                        atualizarListas();
                         atualizarInfoRelacaoAtual();
                     }
                     atualizarInfoAutoSave();
@@ -1037,7 +1206,8 @@
         function iniciarAutoSave() {
             // Auto-save a cada 30 segundos se houver mudanças
             autoSaveInterval = setInterval(() => {
-                if (canticos.length > 0 || relacaoAtual.id) {
+                const totalCanticos = canticos.length + canticosRealizados.length;
+                if (totalCanticos > 0 || relacaoAtual.id) {
                     salvarAutoSave();
                 }
             }, 30000);
@@ -1045,7 +1215,8 @@
 
         // Evento antes de fechar a página
         window.addEventListener('beforeunload', function(e) {
-            if (canticos.length > 0 && !relacaoAtual.id) {
+            const totalCanticos = canticos.length + canticosRealizados.length;
+            if (totalCanticos > 0 && !relacaoAtual.id) {
                 const message = 'Você tem uma relação não salva. Deseja realmente sair?';
                 e.returnValue = message;
                 return message;
