@@ -447,7 +447,7 @@
         <div class="glass-panel">
             <h2 class="section-title">Adicionar Cânticos</h2>
             <div class="form-group">
-                <select id="tipoCantico">
+                <select id="tipoCantico" onchange="verificarTipoOutro()">
                     <option value="Abertura">Abertura</option>
                     <option value="Ato Penitencial">Ato Penitencial</option>
                     <option value="Glória">Glória</option>
@@ -534,8 +534,6 @@
                 <button class="btn" onclick="novaRelacao()">🆕 Nova Relação</button>
                 <button class="btn btn-secondary" onclick="salvarRelacao()">💾 Salvar Relação</button>
                 <button class="btn btn-info" onclick="abrirGerenciadorRelacoes()">📋 Minhas Relações</button>
-                <button class="btn btn-secondary" onclick="exportarRelacao()">📤 Exportar</button>
-                <button class="btn btn-secondary" onclick="importarRelacao()">📥 Importar</button>
             </div>
             <div class="auto-save-info" id="autoSaveInfo">
                 Auto-salvo: <span id="autoSaveTime">Nunca</span>
@@ -572,14 +570,27 @@
         </div>
     </div>
 
-    <!-- Input oculto para carregar arquivos -->
-    <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="carregarArquivo(event)">
+    <!-- Modal para tipo personalizado -->
+    <div id="tipoPersonalizadoModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="fecharModalTipoPersonalizado()">&times;</span>
+            <h2 class="section-title">Tipo Personalizado</h2>
+            <div class="form-group">
+                <input type="text" id="tipoPersonalizado" placeholder="Digite o tipo do cântico (ex: Interlúdio, Meditação...)" style="width: 100%;" maxlength="50">
+            </div>
+            <div class="controls">
+                <button class="btn" onclick="confirmarTipoPersonalizado()">✅ Confirmar</button>
+                <button class="btn btn-danger" onclick="cancelarTipoPersonalizado()">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         let canticos = [];
         let canticosRealizados = [];
         let draggedElement = null;
         let autoSaveInterval;
+        let tipoPersonalizadoTemporario = '';
         let relacaoAtual = {
             id: null,
             nome: 'Nova Relação',
@@ -608,17 +619,76 @@
                     confirmarSalvarRelacao();
                 }
             });
+
+            document.getElementById('tipoPersonalizado').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    confirmarTipoPersonalizado();
+                }
+            });
         });
+
+        // Função para verificar se o tipo "Outro" foi selecionado
+        function verificarTipoOutro() {
+            const tipoSelect = document.getElementById('tipoCantico');
+            if (tipoSelect.value === 'Outro') {
+                document.getElementById('tipoPersonalizadoModal').style.display = 'block';
+                document.getElementById('tipoPersonalizado').focus();
+            }
+        }
+
+        // Função para confirmar tipo personalizado
+        function confirmarTipoPersonalizado() {
+            const tipoPersonalizado = document.getElementById('tipoPersonalizado').value.trim();
+            
+            if (!tipoPersonalizado) {
+                alert('Por favor, digite um tipo para o cântico.');
+                return;
+            }
+
+            tipoPersonalizadoTemporario = tipoPersonalizado;
+            fecharModalTipoPersonalizado();
+            
+            // Focar no campo nome do cântico para continuar o fluxo
+            document.getElementById('nomeCantico').focus();
+        }
+
+        // Função para cancelar tipo personalizado
+        function cancelarTipoPersonalizado() {
+            // Voltar para a primeira opção do select
+            document.getElementById('tipoCantico').value = 'Abertura';
+            tipoPersonalizadoTemporario = '';
+            fecharModalTipoPersonalizado();
+        }
+
+        // Função para fechar modal de tipo personalizado
+        function fecharModalTipoPersonalizado() {
+            document.getElementById('tipoPersonalizadoModal').style.display = 'none';
+            document.getElementById('tipoPersonalizado').value = '';
+        }
 
         // Função para adicionar cântico
         function adicionarCantico() {
             const nome = document.getElementById('nomeCantico').value.trim();
-            const tipo = document.getElementById('tipoCantico').value;
+            let tipo = document.getElementById('tipoCantico').value;
             const tom = document.getElementById('tomCantico').value;
 
             if (!nome) {
                 alert('Por favor, digite o nome do cântico.');
                 return;
+            }
+
+            // Se o tipo for "Outro" e não temos um tipo personalizado, abrir o modal
+            if (tipo === 'Outro' && !tipoPersonalizadoTemporario) {
+                verificarTipoOutro();
+                return;
+            }
+
+            // Se temos um tipo personalizado, usar ele
+            if (tipo === 'Outro' && tipoPersonalizadoTemporario) {
+                tipo = tipoPersonalizadoTemporario;
+                tipoPersonalizadoTemporario = ''; // Limpar após usar
+                // Voltar o select para "Outro" para próximas adições
+                document.getElementById('tipoCantico').value = 'Outro';
             }
 
             const cantico = {
@@ -1010,101 +1080,6 @@
             alert('Relação excluída com sucesso!');
         }
 
-        // Função para exportar relação
-        function exportarRelacao() {
-            const totalCanticos = canticos.length + canticosRealizados.length;
-            if (totalCanticos === 0) {
-                alert('Não há cânticos para exportar.');
-                return;
-            }
-
-            const configuracao = {
-                relacao: relacaoAtual,
-                versao: '2.1',
-                exportadoEm: new Date().toISOString()
-            };
-
-            const blob = new Blob([JSON.stringify(configuracao, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${relacaoAtual.nome.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        // Função para importar relação
-        function importarRelacao() {
-            document.getElementById('fileInput').click();
-        }
-
-        // Função para carregar arquivo
-        function carregarArquivo(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const dados = JSON.parse(e.target.result);
-                    
-                    // Verificar se é o formato novo (v2.1, v2.0) ou antigo (v1.0)
-                    if (dados.relacao && (dados.versao === '2.1' || dados.versao === '2.0')) {
-                        // Formato novo
-                        const totalCanticos = canticos.length + canticosRealizados.length;
-                        if (totalCanticos > 0 && !confirm('Tem certeza que deseja importar esta relação? Os cânticos atuais serão perdidos se não foram salvos.')) {
-                            return;
-                        }
-                        
-                        relacaoAtual = {
-                            ...dados.relacao,
-                            id: null, // Resetar ID para criar nova relação
-                            dataCriacao: null,
-                            dataModificacao: new Date().toISOString()
-                        };
-                        canticos = dados.relacao.canticos || [];
-                        canticosRealizados = dados.relacao.canticosRealizados || [];
-                        
-                    } else if (dados.canticos && Array.isArray(dados.canticos)) {
-                        // Formato antigo (v1.0)
-                        const totalCanticos = canticos.length + canticosRealizados.length;
-                        if (totalCanticos > 0 && !confirm('Tem certeza que deseja importar esta configuração? Os cânticos atuais serão perdidos se não foram salvos.')) {
-                            return;
-                        }
-                        
-                        canticos = dados.canticos;
-                        canticosRealizados = [];
-                        relacaoAtual = {
-                            id: null,
-                            nome: 'Relação Importada',
-                            descricao: 'Importada de arquivo antigo',
-                            canticos: canticos,
-                            canticosRealizados: canticosRealizados,
-                            dataCriacao: null,
-                            dataModificacao: new Date().toISOString()
-                        };
-                    } else {
-                        alert('Arquivo inválido ou formato não reconhecido.');
-                        return;
-                    }
-                    
-                    atualizarListas();
-                    atualizarInfoRelacaoAtual();
-                    salvarAutoSave();
-                    alert('Arquivo importado com sucesso!');
-                    
-                } catch (error) {
-                    alert('Erro ao carregar arquivo: ' + error.message);
-                }
-            };
-            reader.readAsText(file);
-            
-            // Limpar o input para permitir carregar o mesmo arquivo novamente
-            event.target.value = '';
-        }
-
         // Função para atualizar informações da relação atual
         function atualizarInfoRelacaoAtual() {
             const nomeElement = document.getElementById('currentRelacaoNome');
@@ -1146,12 +1121,16 @@
         window.onclick = function(event) {
             const relacaoModal = document.getElementById('relacaoModal');
             const salvarModal = document.getElementById('salvarModal');
+            const tipoPersonalizadoModal = document.getElementById('tipoPersonalizadoModal');
             
             if (event.target === relacaoModal) {
                 fecharModal();
             }
             if (event.target === salvarModal) {
                 fecharModalSalvar();
+            }
+            if (event.target === tipoPersonalizadoModal) {
+                cancelarTipoPersonalizado();
             }
         }
 
