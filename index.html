@@ -123,6 +123,15 @@
             box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
         }
 
+        .btn-info {
+            background: linear-gradient(135deg, #2196F3, #1976D2);
+            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+        }
+
+        .btn-info:hover {
+            box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
+        }
+
         .cantico-item {
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -210,6 +219,99 @@
             padding: 40px 20px;
         }
 
+        .relacao-item {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .relacao-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .relacao-info {
+            flex: 1;
+        }
+
+        .relacao-nome {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #f0f0f0;
+            margin-bottom: 5px;
+        }
+
+        .relacao-detalhes {
+            font-size: 0.9rem;
+            color: #e6e600;
+        }
+
+        .relacao-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            margin: 10% auto;
+            padding: 30px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            color: white;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: white;
+        }
+
+        .current-relacao-info {
+            background: rgba(33, 150, 243, 0.2);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .current-relacao-nome {
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: #2196F3;
+            margin-bottom: 5px;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -242,6 +344,12 @@
             .controls {
                 flex-direction: column;
             }
+
+            .modal-content {
+                width: 95%;
+                margin: 5% auto;
+                padding: 20px;
+            }
         }
 
         /* Animações */
@@ -271,6 +379,14 @@
     <div class="container">
         <h1 class="title">Ordem da Missa</h1>
         
+        <!-- Informações da relação atual -->
+        <div class="glass-panel">
+            <div class="current-relacao-info">
+                <div class="current-relacao-nome" id="currentRelacaoNome">Nova Relação</div>
+                <div class="relacao-detalhes" id="currentRelacaoDetalhes">Relação não salva</div>
+            </div>
+        </div>
+
         <!-- Seção para adicionar cânticos -->
         <div class="glass-panel">
             <h2 class="section-title">Adicionar Cânticos</h2>
@@ -340,16 +456,47 @@
             </div>
         </div>
 
-        <!-- Controles de salvar/carregar -->
+        <!-- Controles de gerenciamento de relações -->
         <div class="glass-panel">
-            <h2 class="section-title">Salvar e Carregar Configurações</h2>
+            <h2 class="section-title">Gerenciar Relações</h2>
             <div class="controls">
-                <button class="btn btn-secondary" onclick="salvarConfiguracao()">💾 Salvar</button>
-                <button class="btn btn-secondary" onclick="carregarConfiguracao()">📁 Carregar</button>
-                <button class="btn btn-danger" onclick="novaRelacao()">🆕 Novo</button>
+                <button class="btn" onclick="novaRelacao()">🆕 Nova Relação</button>
+                <button class="btn btn-secondary" onclick="salvarRelacao()">💾 Salvar Relação</button>
+                <button class="btn btn-info" onclick="abrirGerenciadorRelacoes()">📋 Minhas Relações</button>
+                <button class="btn btn-secondary" onclick="exportarRelacao()">📤 Exportar</button>
+                <button class="btn btn-secondary" onclick="importarRelacao()">📥 Importar</button>
             </div>
             <div class="auto-save-info" id="autoSaveInfo">
                 Auto-salvo: <span id="autoSaveTime">Nunca</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para gerenciar relações salvas -->
+    <div id="relacaoModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="fecharModal()">&times;</span>
+            <h2 class="section-title">Minhas Relações Salvas</h2>
+            <div id="relacoesSalvas">
+                <div class="empty-state">Nenhuma relação salva ainda.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para salvar relação -->
+    <div id="salvarModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="fecharModalSalvar()">&times;</span>
+            <h2 class="section-title">Salvar Relação</h2>
+            <div class="form-group">
+                <input type="text" id="nomeRelacao" placeholder="Nome da relação (ex: Missa de Domingo)" style="width: 100%;">
+            </div>
+            <div class="form-group">
+                <textarea id="descricaoRelacao" placeholder="Descrição (opcional)" style="width: 100%; height: 80px; resize: vertical; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 10px; padding: 12px 15px; color: white; font-family: 'Ubuntu Mono', monospace;"></textarea>
+            </div>
+            <div class="controls">
+                <button class="btn" onclick="confirmarSalvarRelacao()">💾 Salvar</button>
+                <button class="btn btn-danger" onclick="fecharModalSalvar()">❌ Cancelar</button>
             </div>
         </div>
     </div>
@@ -361,16 +508,31 @@
         let canticos = [];
         let draggedElement = null;
         let autoSaveInterval;
+        let relacaoAtual = {
+            id: null,
+            nome: 'Nova Relação',
+            descricao: '',
+            canticos: [],
+            dataCriacao: null,
+            dataModificacao: null
+        };
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
             carregarAutoSave();
             iniciarAutoSave();
+            atualizarInfoRelacaoAtual();
             
             // Adicionar evento de tecla Enter nos campos de input
             document.getElementById('nomeCantico').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     adicionarCantico();
+                }
+            });
+
+            document.getElementById('nomeRelacao').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    confirmarSalvarRelacao();
                 }
             });
         });
@@ -394,8 +556,12 @@
             };
 
             canticos.push(cantico);
+            relacaoAtual.canticos = canticos;
+            relacaoAtual.dataModificacao = new Date().toISOString();
+            
             document.getElementById('nomeCantico').value = '';
             atualizarLista();
+            atualizarInfoRelacaoAtual();
             salvarAutoSave();
         }
 
@@ -461,7 +627,11 @@
                 const draggedItem = canticos.splice(draggedIndex, 1)[0];
                 canticos.splice(targetIndex, 0, draggedItem);
                 
+                relacaoAtual.canticos = canticos;
+                relacaoAtual.dataModificacao = new Date().toISOString();
+                
                 atualizarLista();
+                atualizarInfoRelacaoAtual();
                 salvarAutoSave();
             }
         }
@@ -489,7 +659,11 @@
             cantico.tipo = novoTipo.trim() || cantico.tipo;
             cantico.tom = novoTom.trim() || cantico.tom;
 
+            relacaoAtual.canticos = canticos;
+            relacaoAtual.dataModificacao = new Date().toISOString();
+
             atualizarLista();
+            atualizarInfoRelacaoAtual();
             salvarAutoSave();
         }
 
@@ -497,37 +671,220 @@
         function excluirCantico(id) {
             if (confirm('Tem certeza que deseja excluir este cântico?')) {
                 canticos = canticos.filter(c => c.id !== id);
+                relacaoAtual.canticos = canticos;
+                relacaoAtual.dataModificacao = new Date().toISOString();
+                
                 atualizarLista();
+                atualizarInfoRelacaoAtual();
                 salvarAutoSave();
             }
         }
 
-        // Função para salvar configuração
-        function salvarConfiguracao() {
+        // Função para nova relação
+        function novaRelacao() {
+            if (canticos.length > 0 && confirm('Tem certeza que deseja criar uma nova relação? Os cânticos atuais serão perdidos se não foram salvos.')) {
+                criarNovaRelacao();
+            } else if (canticos.length === 0) {
+                criarNovaRelacao();
+            }
+        }
+
+        function criarNovaRelacao() {
+            canticos = [];
+            relacaoAtual = {
+                id: null,
+                nome: 'Nova Relação',
+                descricao: '',
+                canticos: [],
+                dataCriacao: null,
+                dataModificacao: null
+            };
+            atualizarLista();
+            atualizarInfoRelacaoAtual();
+            salvarAutoSave();
+        }
+
+        // Função para salvar relação
+        function salvarRelacao() {
             if (canticos.length === 0) {
                 alert('Não há cânticos para salvar.');
                 return;
             }
+            
+            document.getElementById('nomeRelacao').value = relacaoAtual.nome === 'Nova Relação' ? '' : relacaoAtual.nome;
+            document.getElementById('descricaoRelacao').value = relacaoAtual.descricao || '';
+            document.getElementById('salvarModal').style.display = 'block';
+        }
+
+        function confirmarSalvarRelacao() {
+            const nome = document.getElementById('nomeRelacao').value.trim();
+            const descricao = document.getElementById('descricaoRelacao').value.trim();
+
+            if (!nome) {
+                alert('Por favor, digite um nome para a relação.');
+                return;
+            }
+
+            const agora = new Date().toISOString();
+            
+            if (!relacaoAtual.id) {
+                relacaoAtual.id = Date.now();
+                relacaoAtual.dataCriacao = agora;
+            }
+            
+            relacaoAtual.nome = nome;
+            relacaoAtual.descricao = descricao;
+            relacaoAtual.canticos = canticos;
+            relacaoAtual.dataModificacao = agora;
+
+            // Salvar no banco de dados local
+            salvarRelacaoNoBanco(relacaoAtual);
+            
+            atualizarInfoRelacaoAtual();
+            fecharModalSalvar();
+            alert('Relação salva com sucesso!');
+        }
+
+        function salvarRelacaoNoBanco(relacao) {
+            let relacoesSalvas = JSON.parse(localStorage.getItem('ordem_missa_relacoes') || '[]');
+            
+            const index = relacoesSalvas.findIndex(r => r.id === relacao.id);
+            if (index >= 0) {
+                relacoesSalvas[index] = relacao;
+            } else {
+                relacoesSalvas.push(relacao);
+            }
+            
+            localStorage.setItem('ordem_missa_relacoes', JSON.stringify(relacoesSalvas));
+        }
+
+        // Função para abrir gerenciador de relações
+        function abrirGerenciadorRelacoes() {
+            carregarRelacoesSalvas();
+            document.getElementById('relacaoModal').style.display = 'block';
+        }
+
+        function carregarRelacoesSalvas() {
+            const relacoesSalvas = JSON.parse(localStorage.getItem('ordem_missa_relacoes') || '[]');
+            const container = document.getElementById('relacoesSalvas');
+            
+            if (relacoesSalvas.length === 0) {
+                container.innerHTML = '<div class="empty-state">Nenhuma relação salva ainda.</div>';
+                return;
+            }
+
+            container.innerHTML = relacoesSalvas.map(relacao => {
+                const dataModificacao = new Date(relacao.dataModificacao || relacao.dataCriacao).toLocaleString('pt-BR');
+                const quantidadeCanticos = relacao.canticos ? relacao.canticos.length : 0;
+                
+                return `
+                    <div class="relacao-item">
+                        <div class="relacao-info">
+                            <div class="relacao-nome">${relacao.nome}</div>
+                            <div class="relacao-detalhes">
+                                ${quantidadeCanticos} cântico${quantidadeCanticos !== 1 ? 's' : ''} • 
+                                ${dataModificacao}
+                                ${relacao.descricao ? '<br>' + relacao.descricao : ''}
+                            </div>
+                        </div>
+                        <div class="relacao-actions">
+                            <button class="btn btn-small" onclick="carregarRelacao(${relacao.id})">📂</button>
+                            <button class="btn btn-small btn-secondary" onclick="duplicarRelacao(${relacao.id})">📋</button>
+                            <button class="btn btn-small btn-danger" onclick="excluirRelacao(${relacao.id})">🗑️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function carregarRelacao(id) {
+            const relacoesSalvas = JSON.parse(localStorage.getItem('ordem_missa_relacoes') || '[]');
+            const relacao = relacoesSalvas.find(r => r.id === id);
+            
+            if (!relacao) {
+                alert('Relação não encontrada.');
+                return;
+            }
+
+            if (canticos.length > 0 && !confirm('Tem certeza que deseja carregar esta relação? Os cânticos atuais serão perdidos se não foram salvos.')) {
+                return;
+            }
+
+            relacaoAtual = { ...relacao };
+            canticos = relacao.canticos || [];
+            
+            atualizarLista();
+            atualizarInfoRelacaoAtual();
+            salvarAutoSave();
+            fecharModal();
+            
+            alert('Relação carregada com sucesso!');
+        }
+
+        function duplicarRelacao(id) {
+            const relacoesSalvas = JSON.parse(localStorage.getItem('ordem_missa_relacoes') || '[]');
+            const relacao = relacoesSalvas.find(r => r.id === id);
+            
+            if (!relacao) {
+                alert('Relação não encontrada.');
+                return;
+            }
+
+            const novoNome = prompt('Nome para a cópia:', relacao.nome + ' - Cópia');
+            if (!novoNome) return;
+
+            const novaRelacao = {
+                ...relacao,
+                id: Date.now(),
+                nome: novoNome,
+                dataCriacao: new Date().toISOString(),
+                dataModificacao: new Date().toISOString()
+            };
+
+            salvarRelacaoNoBanco(novaRelacao);
+            carregarRelacoesSalvas();
+            alert('Relação duplicada com sucesso!');
+        }
+
+        function excluirRelacao(id) {
+            if (!confirm('Tem certeza que deseja excluir esta relação? Esta ação não pode ser desfeita.')) {
+                return;
+            }
+
+            let relacoesSalvas = JSON.parse(localStorage.getItem('ordem_missa_relacoes') || '[]');
+            relacoesSalvas = relacoesSalvas.filter(r => r.id !== id);
+            localStorage.setItem('ordem_missa_relacoes', JSON.stringify(relacoesSalvas));
+            
+            carregarRelacoesSalvas();
+            alert('Relação excluída com sucesso!');
+        }
+
+        // Função para exportar relação
+        function exportarRelacao() {
+            if (canticos.length === 0) {
+                alert('Não há cânticos para exportar.');
+                return;
+            }
 
             const configuracao = {
-                canticos: canticos,
-                dataHora: new Date().toLocaleString('pt-BR'),
-                versao: '1.0'
+                relacao: relacaoAtual,
+                versao: '2.0',
+                exportadoEm: new Date().toISOString()
             };
 
             const blob = new Blob([JSON.stringify(configuracao, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `ordem_missa_${new Date().toISOString().slice(0, 10)}.json`;
+            a.download = `${relacaoAtual.nome.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().slice(0, 10)}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
 
-        // Função para carregar configuração
-        function carregarConfiguracao() {
+        // Função para importar relação
+        function importarRelacao() {
             document.getElementById('fileInput').click();
         }
 
@@ -539,15 +896,48 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const configuracao = JSON.parse(e.target.result);
-                    if (configuracao.canticos && Array.isArray(configuracao.canticos)) {
-                        canticos = configuracao.canticos;
-                        atualizarLista();
-                        salvarAutoSave();
-                        alert('Configuração carregada com sucesso!');
+                    const dados = JSON.parse(e.target.result);
+                    
+                    // Verificar se é o formato novo (v2.0) ou antigo (v1.0)
+                    if (dados.relacao && dados.versao === '2.0') {
+                        // Formato novo
+                        if (canticos.length > 0 && !confirm('Tem certeza que deseja importar esta relação? Os cânticos atuais serão perdidos se não foram salvos.')) {
+                            return;
+                        }
+                        
+                        relacaoAtual = {
+                            ...dados.relacao,
+                            id: null, // Resetar ID para criar nova relação
+                            dataCriacao: null,
+                            dataModificacao: new Date().toISOString()
+                        };
+                        canticos = dados.relacao.canticos || [];
+                        
+                    } else if (dados.canticos && Array.isArray(dados.canticos)) {
+                        // Formato antigo (v1.0)
+                        if (canticos.length > 0 && !confirm('Tem certeza que deseja importar esta configuração? Os cânticos atuais serão perdidos se não foram salvos.')) {
+                            return;
+                        }
+                        
+                        canticos = dados.canticos;
+                        relacaoAtual = {
+                            id: null,
+                            nome: 'Relação Importada',
+                            descricao: 'Importada de arquivo antigo',
+                            canticos: canticos,
+                            dataCriacao: null,
+                            dataModificacao: new Date().toISOString()
+                        };
                     } else {
-                        alert('Arquivo inválido.');
+                        alert('Arquivo inválido ou formato não reconhecido.');
+                        return;
                     }
+                    
+                    atualizarLista();
+                    atualizarInfoRelacaoAtual();
+                    salvarAutoSave();
+                    alert('Arquivo importado com sucesso!');
+                    
                 } catch (error) {
                     alert('Erro ao carregar arquivo: ' + error.message);
                 }
@@ -558,20 +948,50 @@
             event.target.value = '';
         }
 
-        // Função para nova relação
-        function novaRelacao() {
-            if (canticos.length > 0 && confirm('Tem certeza que deseja criar uma nova relação? Os cânticos atuais serão perdidos.')) {
-                canticos = [];
-                atualizarLista();
-                salvarAutoSave();
-            } else if (canticos.length === 0) {
-                alert('Já não há cânticos na lista.');
+        // Função para atualizar informações da relação atual
+        function atualizarInfoRelacaoAtual() {
+            const nomeElement = document.getElementById('currentRelacaoNome');
+            const detalhesElement = document.getElementById('currentRelacaoDetalhes');
+            
+            nomeElement.textContent = relacaoAtual.nome;
+            
+            let detalhes = '';
+            if (relacaoAtual.id) {
+                const dataModificacao = new Date(relacaoAtual.dataModificacao || relacaoAtual.dataCriacao).toLocaleString('pt-BR');
+                detalhes = `Salva • ${canticos.length} cântico${canticos.length !== 1 ? 's' : ''} • ${dataModificacao}`;
+            } else {
+                detalhes = `Não salva • ${canticos.length} cântico${canticos.length !== 1 ? 's' : ''}`;
+            }
+            
+            detalhesElement.textContent = detalhes;
+        }
+
+        // Funções para modais
+        function fecharModal() {
+            document.getElementById('relacaoModal').style.display = 'none';
+        }
+
+        function fecharModalSalvar() {
+            document.getElementById('salvarModal').style.display = 'none';
+        }
+
+        // Fechar modal clicando fora dele
+        window.onclick = function(event) {
+            const relacaoModal = document.getElementById('relacaoModal');
+            const salvarModal = document.getElementById('salvarModal');
+            
+            if (event.target === relacaoModal) {
+                fecharModal();
+            }
+            if (event.target === salvarModal) {
+                fecharModalSalvar();
             }
         }
 
         // Auto-save functions
         function salvarAutoSave() {
             const autoSave = {
+                relacaoAtual: relacaoAtual,
                 canticos: canticos,
                 timestamp: Date.now()
             };
@@ -584,7 +1004,12 @@
             if (autoSave) {
                 try {
                     const data = JSON.parse(autoSave);
-                    // Não carregar automaticamente, apenas manter disponível
+                    if (data.relacaoAtual) {
+                        relacaoAtual = data.relacaoAtual;
+                        canticos = data.canticos || [];
+                        atualizarLista();
+                        atualizarInfoRelacaoAtual();
+                    }
                     atualizarInfoAutoSave();
                 } catch (error) {
                     console.error('Erro ao carregar auto-save:', error);
@@ -612,7 +1037,7 @@
         function iniciarAutoSave() {
             // Auto-save a cada 30 segundos se houver mudanças
             autoSaveInterval = setInterval(() => {
-                if (canticos.length > 0) {
+                if (canticos.length > 0 || relacaoAtual.id) {
                     salvarAutoSave();
                 }
             }, 30000);
@@ -620,8 +1045,8 @@
 
         // Evento antes de fechar a página
         window.addEventListener('beforeunload', function(e) {
-            if (canticos.length > 0) {
-                const message = 'Você tem cânticos não salvos. Deseja realmente sair?';
+            if (canticos.length > 0 && !relacaoAtual.id) {
+                const message = 'Você tem uma relação não salva. Deseja realmente sair?';
                 e.returnValue = message;
                 return message;
             }
