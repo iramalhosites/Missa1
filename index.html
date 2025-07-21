@@ -160,6 +160,12 @@
             position: relative;
             animation: fadeIn 0.3s ease;
             touch-action: none; /* Importante para touch events */
+            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none; /* Safari */
+            -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Old versions of Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+            user-select: none; /* Non-prefixed version, currently supported by Chrome, Edge, Opera and Firefox */
         }
 
         .cantico-item:hover {
@@ -169,9 +175,10 @@
         }
 
         .cantico-item.dragging {
-            opacity: 0.5;
-            transform: rotate(5deg);
+            opacity: 0.7;
+            transform: rotate(3deg) scale(1.05);
             z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
         .cantico-item.realizado {
@@ -235,10 +242,18 @@
         }
 
         .drag-handle {
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.4rem;
             margin-right: 10px;
             cursor: grab;
+            padding: 5px;
+            border-radius: 5px;
+            transition: all 0.2s ease;
+        }
+
+        .drag-handle:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.9);
         }
 
         .drag-handle:active {
@@ -376,7 +391,8 @@
 
         .drop-zone.drag-over {
             border-color: #4CAF50;
-            background: rgba(76, 175, 80, 0.1);
+            background: rgba(76, 175, 80, 0.2);
+            transform: scale(1.02);
         }
 
         @media (max-width: 768px) {
@@ -401,6 +417,8 @@
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 10px;
+                padding: 20px 15px;
+                margin-bottom: 15px;
             }
             
             .cantico-actions {
@@ -423,15 +441,10 @@
                 gap: 15px;
             }
 
-            /* Melhorar experiência touch em mobile */
-            .cantico-item {
-                padding: 20px 15px;
-                margin-bottom: 15px;
-            }
-
             .drag-handle {
-                font-size: 1.5rem;
-                padding: 5px;
+                font-size: 1.8rem;
+                padding: 8px;
+                margin-right: 15px;
             }
         }
 
@@ -628,11 +641,13 @@
             dataModificacao: null
         };
 
-        // Variáveis para touch events
+        // Variáveis para touch events melhoradas para iOS
         let touchStartY = 0;
         let touchStartX = 0;
         let isDragging = false;
         let draggedItem = null;
+        let touchStartTime = 0;
+        let longPressTimer = null;
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
@@ -666,8 +681,8 @@
         // Função para limpar campos do formulário
         function limparCamposFormulario() {
             document.getElementById('nomeCantico').value = '';
-            document.getElementById('tipoCantico').value = 'Abertura';
-            document.getElementById('tomCantico').value = 'C';
+            document.getElementById('tipoCantico').selectedIndex = 0; // Força o primeiro item
+            document.getElementById('tomCantico').selectedIndex = 0; // Força o primeiro item
         }
 
         // Função para verificar se o tipo "Outro" foi selecionado
@@ -698,7 +713,7 @@
         // Função para cancelar tipo personalizado
         function cancelarTipoPersonalizado() {
             // Voltar para a primeira opção do select
-            document.getElementById('tipoCantico').value = 'Abertura';
+            document.getElementById('tipoCantico').selectedIndex = 0;
             tipoPersonalizadoTemporario = '';
             fecharModalTipoPersonalizado();
         }
@@ -730,8 +745,6 @@
             if (tipo === 'Outro' && tipoPersonalizadoTemporario) {
                 tipo = tipoPersonalizadoTemporario;
                 tipoPersonalizadoTemporario = ''; // Limpar após usar
-                // Voltar o select para "Outro" para próximas adições
-                document.getElementById('tipoCantico').value = 'Outro';
             }
 
             const cantico = {
@@ -746,7 +759,7 @@
             relacaoAtual.canticosRealizados = canticosRealizados;
             relacaoAtual.dataModificacao = new Date().toISOString();
             
-            // Limpar campos após adicionar
+            // Limpar campos após adicionar - CORRIGIDO
             limparCamposFormulario();
             atualizarListas();
             atualizarInfoRelacaoAtual();
@@ -842,7 +855,7 @@
             salvarAutoSave();
         }
 
-        // Função para adicionar eventos de drag and drop (desktop e mobile)
+        // Função para adicionar eventos de drag and drop (desktop e mobile melhorado)
         function adicionarEventosDragDrop() {
             const items = document.querySelectorAll('#canticosSelecionados .cantico-item');
             
@@ -853,10 +866,14 @@
                 item.addEventListener('drop', handleDrop);
                 item.addEventListener('dragend', handleDragEnd);
 
-                // Eventos para mobile (touch)
-                item.addEventListener('touchstart', handleTouchStart, { passive: false });
-                item.addEventListener('touchmove', handleTouchMove, { passive: false });
-                item.addEventListener('touchend', handleTouchEnd, { passive: false });
+                // Eventos para mobile (touch) - melhorados para iOS
+                const dragHandle = item.querySelector('.drag-handle');
+                if (dragHandle) {
+                    dragHandle.addEventListener('touchstart', handleTouchStart, { passive: false });
+                    dragHandle.addEventListener('touchmove', handleTouchMove, { passive: false });
+                    dragHandle.addEventListener('touchend', handleTouchEnd, { passive: false });
+                    dragHandle.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+                }
             });
         }
 
@@ -899,24 +916,36 @@
             draggedElement = null;
         }
 
-        // Eventos de touch para mobile
+        // Eventos de touch para mobile - MELHORADOS PARA iOS
         function handleTouchStart(e) {
-            // Verificar se o toque foi no drag handle
-            if (!e.target.classList.contains('drag-handle') && !e.target.closest('.drag-handle')) {
-                return;
-            }
-
             e.preventDefault();
             e.stopPropagation();
 
             const touch = e.touches[0];
             touchStartY = touch.clientY;
             touchStartX = touch.clientX;
+            touchStartTime = Date.now();
             isDragging = false;
-            draggedItem = this;
+            draggedItem = this.closest('.cantico-item');
 
-            // Adicionar classe visual
-            this.style.transition = 'none';
+            // Limpar timer anterior se existir
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+            }
+
+            // Iniciar drag imediatamente no iOS
+            if (draggedItem) {
+                draggedItem.style.transition = 'none';
+                draggedItem.style.zIndex = '1000';
+                
+                // Adicionar feedback visual imediato
+                setTimeout(() => {
+                    if (draggedItem && !isDragging) {
+                        isDragging = true;
+                        draggedItem.classList.add('dragging');
+                    }
+                }, 100);
+            }
         }
 
         function handleTouchMove(e) {
@@ -929,8 +958,8 @@
             const deltaY = touch.clientY - touchStartY;
             const deltaX = touch.clientX - touchStartX;
 
-            // Verificar se o movimento é suficiente para iniciar o drag
-            if (!isDragging && (Math.abs(deltaY) > 10 || Math.abs(deltaX) > 10)) {
+            // Iniciar drag se não iniciado ainda
+            if (!isDragging && (Math.abs(deltaY) > 5 || Math.abs(deltaX) > 5)) {
                 isDragging = true;
                 draggedItem.classList.add('dragging');
             }
@@ -945,7 +974,9 @@
 
                 // Remover classes de drop zone de todos os itens
                 document.querySelectorAll('#canticosSelecionados .cantico-item').forEach(item => {
-                    item.classList.remove('drop-zone', 'drag-over');
+                    if (item !== draggedItem) {
+                        item.classList.remove('drop-zone', 'drag-over');
+                    }
                 });
 
                 // Adicionar classe de drop zone ao item alvo
@@ -960,6 +991,12 @@
 
             e.preventDefault();
             e.stopPropagation();
+
+            // Limpar timer se existir
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
 
             if (isDragging) {
                 const touch = e.changedTouches[0];
@@ -989,6 +1026,7 @@
                 draggedItem.classList.remove('dragging');
                 draggedItem.style.transform = '';
                 draggedItem.style.transition = '';
+                draggedItem.style.zIndex = '';
             }
 
             // Remover classes de drop zone
