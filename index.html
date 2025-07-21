@@ -704,6 +704,8 @@
             relacaoAtual.dataModificacao = new Date().toISOString();
             
             document.getElementById('nomeCantico').value = '';
+            document.getElementById('tipoCantico').value = 'Abertura';
+            document.getElementById('tomCantico').value = 'C';
             atualizarListas();
             atualizarInfoRelacaoAtual();
             salvarAutoSave();
